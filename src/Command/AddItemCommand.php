@@ -4,6 +4,8 @@ namespace App\Command;
 
 
 use App\Service\ItemRepository\ItemRepository;
+use qtism\data\AssessmentItem;
+use qtism\data\storage\xml\XmlDocument;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -58,6 +60,20 @@ class AddItemCommand extends Command
         // TODO Validate QTI contents
         $output->writeln("Processing file '${file}' to be ingested as '${id}'...");
 
-        $this->itemRepository->store($id, file_get_contents($file));
+        $doc = new XmlDocument();
+        $doc->load($file, true);
+
+        $output->writeln("QTI version is " . $doc->getVersion());
+
+        /** @var AssessmentItem $rootComponent */
+        $rootComponent = $doc->getDocumentComponent();
+        if ($rootComponent->getQtiClassName() != 'assessmentItem') {
+            $output->writeln("The provided document does not represent an assessmentItem");
+        }
+
+        $rootComponent->setToolName("QTI Workshop");
+        $rootComponent->setToolVersion("0.1.0");
+
+        $this->itemRepository->store($id, $doc->saveToString(true));
     }
 }
