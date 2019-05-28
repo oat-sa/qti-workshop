@@ -42,13 +42,15 @@ class ItemSessionManager
             $marshaller = new Marshaller();
             $data = $marshaller->marshall($itemSession, Marshaller::MARSHALL_ARRAY);
             $sessionId = uniqid();
+            $time = new \DateTime();
 
             $this->itemSessionRepository->store(
                 $sessionId,
                 [
                     'itemId' => $itemId,
                     'state' => $itemSession->getState(),
-                    'session' => $data
+                    'session' => $data,
+                    'time' => $time->format('Y-m-d H:i:s')
                 ]
             );
 
@@ -79,6 +81,7 @@ class ItemSessionManager
             /** @var IAssessmentItem $item */
             $item = $this->itemRepository->get($sessionData['itemId'])->getDocumentComponent();
             $itemSession = new AssessmentItemSession($item);
+            $itemSession->setTime(new \DateTime($sessionData['time']));
             $itemSession->getItemSessionControl()->setMaxAttempts(0);
 
             $itemSession->setState($sessionData['state']);
@@ -93,11 +96,14 @@ class ItemSessionManager
 
             $itemSession->beginAttempt();
 
+
             $responses = $unmarshaller->unmarshall($responses);
             foreach ($responses as $responseIdentifier => $response) {
                 $itemSession[$responseIdentifier] = $response;
             }
 
+            $newTime = new \DateTime();
+            $itemSession->setTime($newTime);
             $itemSession->endAttempt();
             $newSessionData = $marshaller->marshall($itemSession, Marshaller::MARSHALL_ARRAY);
 
@@ -106,7 +112,8 @@ class ItemSessionManager
                 [
                     'itemId' => $sessionData['itemId'],
                     'state' => $itemSession->getState(),
-                    'session' => $newSessionData
+                    'session' => $newSessionData,
+                    'time' => $newTime->format('Y-m-d H:i:s')
                 ]
             );
 
